@@ -102,8 +102,21 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
+  //
+  // Ako je n == 0 vrati nextfree bez modifikovanja
+  result = nextfree;
+  
+  // Ako je n > 0 pomjeri nextfree za n byte-i zaokruzenih na adresu
+  // djeljivu sa PGSIZE (ROUNDUP zaokruzuje prema gore), 
+  // provjeri da li nextfree prelazi opseg
+  // okvira KERNBASE + 4MB i baci panic ako jeste.
+  if (n > 0) {
+    nextfree = nextfree + ROUNDUP(n, PGSIZE);
+    if ((uint32_t) nextfree >= KERNBASE + PTSIZE) 
+      panic("Out of memory!\n");
+  }
 
-	return NULL;
+	return result;
 }
 
 // Set up a two-level page table:
