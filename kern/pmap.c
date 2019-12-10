@@ -163,7 +163,7 @@ mem_init(void)
 	// Your code goes here:
   //
   // Alokator stranica
-  pages = (struct PageInfo*) boot_alloc(npages*sizeof(struct PageInfo));
+  pages = (struct PageInfo *) boot_alloc(npages*sizeof(struct PageInfo));
   memset(pages, 0, npages*sizeof(struct PageInfo));
 
 	//////////////////////////////////////////////////////////////////////
@@ -282,12 +282,12 @@ page_init(void)
 
   // treci dio
   uint32_t temp = (uint32_t) (boot_alloc(0) - KERNBASE) / PGSIZE;
-  for( ; i < temp; i++) {
+  for ( ; i < temp; i++) {
     pages[i].pp_ref = 1;
   }
 
   // cetvrti dio
-  for( ; i < npages; i++) {
+  for ( ; i < npages; i++) {
     pages[i].pp_ref = 0;
     pages[i].pp_link = page_free_list;
     page_free_list = &pages[i];
@@ -309,7 +309,7 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
-  struct PageInfo* temp = page_free_list;
+  struct PageInfo * temp = page_free_list;
   if (page_free_list) {
     page_free_list = page_free_list -> pp_link;
     temp -> pp_link = NULL;
