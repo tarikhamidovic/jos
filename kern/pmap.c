@@ -381,8 +381,10 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
     // Ako nije potrebno praviti stranicu, vrati NULL
     if (create == 0) 
       return NULL;
+
     // Pravimo novu stranicu
     struct PageInfo * new_page = page_alloc(1);
+
     // Ako alokacija stranice ne uspije, vrati NULL
     if (!new_page) 
       return NULL;
@@ -413,9 +415,11 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
   for (int i = 0; i < size/PGSIZE; i++, va += PGSIZE, pa += PGSIZE) {
     // Pristupi PTE, u slucaju da nije prisutan, kreiraj ga
     pte_t * pte = pgdir_walk(pgdir, (void *) va, 1);
+
     // Ako pgdir_walk vrati NULL, baci panic
     if (!pte) 
       panic("Failed to access or create PTE!");
+
     // Postavi permisije i mapiraj
     *pte = pa | perm | PTE_P;
   }
@@ -467,8 +471,22 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
-	// Fill this function in
-	return NULL;
+  // Pristupamo adresi PTE funkcijom pgdir_walk
+  pte_t * pte = pgdir_walk(pgdir, va, 0);
+  
+  // Ako PTE ne postoji
+  if (!pte) 
+    return NULL;
+  
+  // Ako se PTE ne koristi
+  if (!(*pte & PTE_P)) 
+    return NULL;
+
+  // Ako pte_store nije nula, storiraj adresu od pte u njega
+  if (pte_store) 
+    *pte_store = pte;
+
+  return pa2page(PTE_ADDR(*pte));
 }
 
 //
