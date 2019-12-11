@@ -372,7 +372,7 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
   // Makro PDX vraca bite 21-31 linearne adrese, koji predstavljaju indeks
-  // u PD. Pristupamo PDE preko tog indeksa
+  // za PD. Pristupamo PDE preko tog indeksa
   pde_t pde = pgdir[PDX(va)];
   
   // Ako se direktorij asociran sa PDE ne koristi (njegov P bit je setovan
@@ -393,7 +393,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
     pgdir[PDX(va)] = pde;
   }
   // Makro PTX vraca bite 12-21 linearne adrese, koji predstavljaju indeks
-  // u PT.
+  // za PT.
   pte_t * pt = KADDR(PTE_ADDR(pde));
 	return pt + PTX(va);
 }
@@ -507,7 +507,19 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 void
 page_remove(pde_t *pgdir, void *va)
 {
-	// Fill this function in
+  pte_t * store_pte = NULL;
+  
+  // Trazimo stranicu
+  struct PageInfo * page_to_remove = page_lookup(pgdir, va, &store_pte);
+  
+  // Ako je stranica pronadjena
+  if (page_to_remove) {
+    // PTE setujemo na nulu
+    *store_pte = 0;
+    // Dekrement ref_count
+    page_decref(page_to_remove);
+    tlb_invalidate(pgdir, va);
+  }
 }
 
 //
