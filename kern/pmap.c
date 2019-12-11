@@ -371,8 +371,29 @@ page_decref(struct PageInfo* pp)
 pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
-	// Fill this function in
-	return NULL;
+  // Makro PDX vraca bite 21-31 linearne adrese, koji predstavljaju indeks
+  // u PD. Pristupamo PDE preko tog indeksa
+  pde_t pde = pgdir[PDX(va)];
+  
+  // Ako se direktorij asociran sa PDE ne koristi (njegov P bit je setovan
+  // na nulu)
+  if (!(pde & PTE_P)) {
+    // Ako nije potrebno praviti stranicu, vrati NULL
+    if (create == 0) 
+      return NULL;
+    // Pravimo novu stranicu
+    struct PageInfo * new_page = page_alloc(1);
+    // Ako alokacija stranice ne uspije, vrati NULL
+    if (!new_page) 
+      return NULL;
+    new_page ->pp_ref++;
+    pde = page2pa(new_page) | PTE_P | PTE_W;
+    pgdir[PDX(va)] = pde;
+  }
+  // Makro PTX vraca bite 12-21 linearne adrese, koji predstavljaju indeks
+  // u PT.
+  pte_t * pt = KADDR(PTE_ADDR(pde));
+	return pt + PTX(va);
 }
 
 //
@@ -389,7 +410,15 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-	// Fill this function in
+  for (int i = 0; i < size/PGSIZE; i++, va += PGSIZE, pa += PGSIZE) {
+    // Pristupi PTE, u slucaju da nije prisutan, kreiraj ga
+    pte_t * pte = pgdir_walk(pgdir, (void *) va, 1);
+    // Ako pgdir_walk vrati NULL, baci panic
+    if (!pte) 
+      panic("Failed to access or create PTE!");
+    // Postavi permisije i mapiraj
+    *pte = pa | perm | PTE_P;
+  }
 }
 
 //
