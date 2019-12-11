@@ -9,7 +9,6 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 
-#include <inc/types.h>
 
 // These variables are set by i386_detect_memory()
 size_t npages;			// Amount of physical memory (in pages)
