@@ -283,7 +283,8 @@ page_init(void)
 		page_free_list = &pages[i];
 	}
 
-  // treci dio
+  // treci dio, ne mozemo ici samo do EXTPHYSMEM jer ima prostor
+  // u koji smo spremili pages i kern_pgdir
   uint32_t temp = (uint32_t) (boot_alloc(0) - KERNBASE) / PGSIZE;
   for ( ; i < temp; i++) {
     pages[i].pp_ref = 1;
@@ -312,7 +313,10 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
+  // Pomocna varijabla za izbacivanje stranice iz jednostruko linkane liste
   struct PageInfo * temp = page_free_list;
+
+  // Ako page_free_list nije prazna
   if (page_free_list) {
     page_free_list = page_free_list -> pp_link;
     temp -> pp_link = NULL;
@@ -334,6 +338,8 @@ page_free(struct PageInfo *pp)
 	// pp->pp_link is not NULL.
   if (pp ->pp_ref != 0 || pp ->pp_link != NULL) 
     panic("Invalid page free!");
+
+  // Ubaci pp u jednostruko linkanu listu page_free_list
   pp ->pp_link = page_free_list;
   page_free_list = pp;
 }
@@ -456,12 +462,19 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
+  // Pristupi PTE, ako je potrebno kreiraj ga
   pte_t * pte = pgdir_walk(pgdir, va, 1);
+  
+  // Ako je prethodna operacija neuspjela vracamo -E_NO_MEM
   if (!pte) 
     return -E_NO_MEM;
+  
+  // Stranica se koristi, pa se pp_ref inkrementira
   pp ->pp_ref++;
   if (*pte & PTE_P) 
     page_remove(pgdir, va);
+
+  // Setujemo permisije
   *pte = page2pa(pp) | perm | PTE_P;
   pgdir[PDX(va)] = pgdir[PDX(va)] | perm;
 	return 0;
