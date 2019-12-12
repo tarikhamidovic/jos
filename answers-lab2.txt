@@ -1,0 +1,31 @@
+Odgovor 1:
+Funkcija return_a_pointer() vratiti ce virtuelnu adresu koja se storira
+u varijablu value tipa pokazivac na karakter. Varijabla x ce poprimiti adresu
+varijable value u virtuelnom adresnom prostoru, pa je odgovor uintptr_t.
+
+Odgovor 2:
++-------------------------------------------------------+
+| Entry | Base Virtual Address  | Points to (logically) |
+|-------|-----------------------|-----------------------|
+| 1023  |       0xef400000      |       kern_pgdir      |
+|-------|-----------------------|-----------------------|
+| 1022  |
+
+
+
+Odgovor 3:
+User programima nije dozvoljeno pristupati kernel memoriji iz razloga sto
+bi na taj nacin mogli izazvati maliciozne radnje koje bi naskodile drugim
+programima a i samome kernelu. Kada PTE_U nije ukljucen, user programi ne 
+mogu pristupati kernel memoriji.
+
+Odgovor 4:
+sizeof(PageInfo) = 8B, 4MB UPAGES -> 512K PageInfo struktura
+PGSIZE = 4KB -> 512K * 4KB = 2GB fizicke memorije
+
+Odgovor 5:
+4MB za PageInfo, 2MB za PT, 4KB za PD
+
+Odgovor 6:
+Nakon jmp *%eax
+entry_pgdir mapira virtuelnu adresu od 0 do 4MB u fizicku adresu 0 do 4MB.
