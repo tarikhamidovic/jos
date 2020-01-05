@@ -366,11 +366,42 @@ load_icode(struct Env *e, uint8_t *binary)
 	//  What?  (See env_run() and env_pop_tf() below.)
 
 	// LAB 3: Your code here.
+  
+  struct Elf *elf = (struct Elf *) binary;
+  
+  // Provjeravamo da li je nas file zapravo ELF
+  if (elf->e_magic != ELF_MAGIC) 
+    panic("load_icode(): File is not executable (must be ELF)");
+
+  // Kreiramo pointere na pocetak i kraj program header-a 
+  // datog ELF
+  struct Proghdr *ph = (struct Proghdr *) (elf + elf->e_phoff);
+  struct Proghdr *eph = ph + elf->e_phnum;
+
+  // Postavljamo va za okruzenje e
+  lcr3(PADDR(e->env_pgdir));
+
+  while (ph < eph) {
+    if (ph->p_type == ELF_PROG_LOAD) {
+      region_alloc(e, (void *) ph->p_va, ph->p_memsz);
+      memset((void *) ph->p_va, 0, ph->p_memsz);
+      memcpy((void *) ph->p_pa, binary + ph->p_offset, ph->p_filesz);
+    }
+    ph++;
+  }
+
+  // Vracamo va kernelu
+  lcr3(PADDR(kern_pgdir));
+
+  // Eip okruzenja postavljamo na entry procitan iz ELF
+  e->env_tf.tf_eip = elf->e_entry;
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
+  
+  region_alloc(e, (void *) (USTACKTOP - PGSIZE), PGSIZE);
 }
 
 //
