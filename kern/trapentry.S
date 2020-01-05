@@ -47,6 +47,8 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+  // Za part A: preuzeto iz inc/trap.h
+
   TRAPHANDLER_NOEC(DIVIDE, 0) 
   TRAPHANDLER_NOEC(DEBUG, 1)
   TRAPHANDLER_NOEC(NMI, 2)
@@ -68,4 +70,14 @@
 /*
  * Lab 3: Your code here for _alltraps
  */
+
+  _alltraps:
+    pushl %ds
+    pushl %es
+    pushal
+    movw $GD_KD, %ax
+    movw %ax, %ds
+    movw %ax, %es
+    pushl %esp
+    call trap
 
