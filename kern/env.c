@@ -289,6 +289,27 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+  
+  // Zaokruzujemo na dole pocetnu adresu, a krajnju zaokruzujemo na gore
+  void *begin = ROUNDDOWN(va, PGSIZE);
+  void *end = ROUNDUP(va + len, PGSIZE);
+
+  struct PageInfo *page;
+  
+  // 
+  while (begin < end) {
+    // Alociramo stranicu, ako je alokacija neuspjela, panic
+    if (!(page = page_alloc(0))) 
+      panic("region_alloc(): Unable to allocate page");
+    
+    // Mapiranje stranice, ako je neuspjelo, panic
+    if (page_insert(e->env_pgdir, page, begin, PTE_U | PTE_W) != 0)
+      panic("region_alloc(): Unable to insert page");
+    
+    // Inkrementiramo brojac na sljedeci page
+    begin += PGSIZE;
+  }
+
 }
 
 //
