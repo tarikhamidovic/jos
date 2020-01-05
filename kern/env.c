@@ -375,7 +375,7 @@ load_icode(struct Env *e, uint8_t *binary)
 
   // Kreiramo pointere na pocetak i kraj program header-a 
   // datog ELF
-  struct Proghdr *ph = (struct Proghdr *) (elf + elf->e_phoff);
+  struct Proghdr *ph = (struct Proghdr *) ((uint8_t *) elf + elf->e_phoff);
   struct Proghdr *eph = ph + elf->e_phnum;
 
   // Postavljamo va za okruzenje e
