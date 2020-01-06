@@ -599,7 +599,26 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+  
+  // Postavljamo pocetak i kraj bloka memorije koji provjeravamo
+  uint32_t begin = (uint32_t) ROUNDDOWN(va, PGSIZE);
+  uint32_t end = (uint32_t) ROUNDUP(va + len, PGSIZE);
+  pte_t *pte;
 
+  // Prolazimo kroz blok memorije, provjeravamo da li okruzenje ima sve
+  // potrebne dozvole da pristupi datom bloku
+  while (begin < end) {
+    pte = pgdir_walk(env->env_pgdir, (void *) begin, 0);
+    if ((begin >= ULIM) || !pte || !(*pte & PTE_P) || ((*pte & perm) != perm)) {
+      if (begin < (uint32_t) va) {
+        user_mem_check_addr = (uint32_t) va;
+      } else {
+        user_mem_check_addr = (uint32_t) begin;
+      }
+      return -E_FAULT;
+    }
+    begin += PGSIZE;
+  }
 	return 0;
 }
 
