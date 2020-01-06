@@ -416,7 +416,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
     if (!new_page) 
       return NULL;
     new_page ->pp_ref++;
-    pde = page2pa(new_page) | PTE_P | PTE_W;
+    pde = page2pa(new_page) | PTE_P | PTE_W | PTE_U;
     pgdir[PDX(va)] = pde;
   }
   // Makro PTX vraca bite 12-21 linearne adrese, koji predstavljaju indeks
