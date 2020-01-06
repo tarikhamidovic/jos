@@ -107,6 +107,9 @@ trap_init(void)
   SETGATE(idt[18], 0, GD_KT, MCHK, 0);
   SETGATE(idt[19], 0, GD_KT, SIMDERR, 0);
 
+  void SYSCALL();
+  SETGATE(idt[T_SYSCALL], 0, GD_KT, SYSCALL, 3); 
+
   // Per-CPU setup 
 	trap_init_percpu();
 }
@@ -185,6 +188,33 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+
+  // Da izbjegnemo nepotrebne provjere preko if-else iskaza,
+  // koristimo switch() te nam je slozenost pristupa O(1)
+
+  switch (tf->tf_trapno) {
+    case T_PGFLT:
+      page_fault_handler(tf);
+      return;
+   
+    case T_BRKPT:
+      monitor(tf);
+      return;
+    
+    // Sistemski poziv
+    case T_SYSCALL:
+      tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax,
+                                    tf->tf_regs.reg_edx,
+                                    tf->tf_regs.reg_ecx,
+                                    tf->tf_regs.reg_ebx,
+                                    tf->tf_regs.reg_edi,
+                                    tf->tf_regs.reg_esi);
+      return;
+    
+    // Za sve ostalo
+    default:
+      break;
+  }
 
   if (tf->tf_trapno == T_PGFLT) {
     page_fault_handler(tf);
