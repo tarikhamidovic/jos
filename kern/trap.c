@@ -89,7 +89,9 @@ trap_init(void)
   SETGATE(idt[0], 0, GD_KT, DIVIDE, 0);
   SETGATE(idt[1], 0, GD_KT, DEBUG, 0);
   SETGATE(idt[2], 0, GD_KT, NMI, 0);
-  SETGATE(idt[3], 0, GD_KT, BRKPT, 0);
+  // Da bi izbjegli General Protection fault setujemo
+  // DPL na 3
+  SETGATE(idt[3], 0, GD_KT, BRKPT, 3);
   SETGATE(idt[4], 0, GD_KT, OFLOW, 0);
   SETGATE(idt[5], 0, GD_KT, BOUND, 0);
   SETGATE(idt[6], 0, GD_KT, ILLOP, 0);
@@ -186,6 +188,10 @@ trap_dispatch(struct Trapframe *tf)
 
   if (tf->tf_trapno == T_PGFLT) {
     page_fault_handler(tf);
+    return;
+  }
+  if (tf->tf_trapno == T_BRKPT) {
+    monitor(tf);
     return;
   }
 	// Unexpected trap: The user process or the kernel has a bug.
