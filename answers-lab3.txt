@@ -37,4 +37,4 @@ in light of what the user/softint test program does?
 
 Razlog za ovaj mehanizam je da user ne moze natjerati kernel da izvrsava
 handlere za koje nema potrebe, ovim se user ogranicava i ne dozvoljava mu
-se da izvrsava neke maliciozne stvari.
+se da izvrsava neke maliciozne radnje.
