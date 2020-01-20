@@ -58,8 +58,28 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
+	// Kreiramo pointer na ebp
+  uint32_t * ebp = ((uint32_t *)read_ebp());
+  cprintf("Stack backtrace: \n");
+  while (ebp) {
+    // ebp[n] je ekvivalentno ebp + n byte-a
+    // Iznad adrese ebp se nalaze eip i argumenti, tako da pravimo
+    // korake po 4 byte-a prema visim adresama
+    cprintf("ebp %08x eip %08x ", ebp, ebp[1]);
+    cprintf("args %08x %08x %08x %08x %08x\n", ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);
+
+    // Dodatno za zadatak 12
+    struct Eipdebuginfo eipinfo;
+    debuginfo_eip(ebp[1], &eipinfo);
+    cprintf("\t%s:%d: ", eipinfo.eip_file, eipinfo.eip_line);
+    cprintf("%.*s", eipinfo.eip_fn_namelen, eipinfo.eip_fn_name);
+    cprintf("+%d\n", ebp[1] - eipinfo.eip_fn_addr);
+
+    // ebp ce sada pokazivati na adressu koju dobijemo dereferenciranjem
+    // njegove vrijednosti
+    ebp = (uint32_t *)(*ebp);
+  }
+  return 0;
 }
 
 

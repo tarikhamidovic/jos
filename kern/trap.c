@@ -72,8 +72,52 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+  // Inicijaliziramo IDT
+  
+  void DIVIDE();
+  void DEBUG();
+  void NMI();
+  void BRKPT();
+  void OFLOW();
+  void BOUND();
+  void ILLOP();
+  void DEVICE();
+  void DBLFLT();
+  void TSS();
+  void SEGNP();
+  void STACK();
+  void GPFLT();
+  void PGFLT();
+  void FPERR();
+  void ALIGN();
+  void MCHK();
+  void SIMDERR();
 
-	// Per-CPU setup 
+  SETGATE(idt[0], 0, GD_KT, DIVIDE, 0);
+  SETGATE(idt[1], 0, GD_KT, DEBUG, 0);
+  SETGATE(idt[2], 0, GD_KT, NMI, 0);
+  // Da bi izbjegli General Protection fault setujemo
+  // DPL na 3
+  SETGATE(idt[3], 0, GD_KT, BRKPT, 3);
+  SETGATE(idt[4], 0, GD_KT, OFLOW, 0);
+  SETGATE(idt[5], 0, GD_KT, BOUND, 0);
+  SETGATE(idt[6], 0, GD_KT, ILLOP, 0);
+  SETGATE(idt[7], 0, GD_KT, DEVICE, 0);
+  SETGATE(idt[8], 0, GD_KT, DBLFLT, 0);
+  SETGATE(idt[10], 0, GD_KT, TSS, 0);
+  SETGATE(idt[11], 0, GD_KT, SEGNP, 0);
+  SETGATE(idt[12], 0, GD_KT, STACK, 0);
+  SETGATE(idt[13], 0, GD_KT, GPFLT, 0);
+  SETGATE(idt[14], 0, GD_KT, PGFLT, 0);
+  SETGATE(idt[16], 0, GD_KT, FPERR, 0);
+  SETGATE(idt[17], 0, GD_KT, ALIGN, 0);
+  SETGATE(idt[18], 0, GD_KT, MCHK, 0);
+  SETGATE(idt[19], 0, GD_KT, SIMDERR, 0);
+
+  void SYSCALL();
+  SETGATE(idt[T_SYSCALL], 0, GD_KT, SYSCALL, 3); 
+
+  // Per-CPU setup 
 	trap_init_percpu();
 }
 
@@ -177,6 +221,33 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
 
+  // Da izbjegnemo nepotrebne provjere preko if-else iskaza,
+  // koristimo switch() te nam je slozenost pristupa O(1)
+
+  switch (tf->tf_trapno) {
+    case T_PGFLT:
+      page_fault_handler(tf);
+      return;
+   
+    case T_BRKPT:
+      monitor(tf);
+      return;
+    
+    // Sistemski poziv
+    case T_SYSCALL:
+      tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax,
+                                    tf->tf_regs.reg_edx,
+                                    tf->tf_regs.reg_ecx,
+                                    tf->tf_regs.reg_ebx,
+                                    tf->tf_regs.reg_edi,
+                                    tf->tf_regs.reg_esi);
+      return;
+    
+    // Za sve ostalo
+    default:
+      break;
+  }
+
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
 	// IRQ line or other reasons. We don't care.
@@ -189,6 +260,8 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+
+
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
@@ -271,6 +344,11 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+  
+  // Ako se desi page fault dok je procesor u kernel modu,
+  // panic se aktivira i operativni sistem prestaje s radom
+  if ((tf->tf_cs & 3) == 0)
+    panic("Page fault in kernel mode!");
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
