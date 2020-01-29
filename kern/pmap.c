@@ -642,7 +642,19 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+  size = ROUNDUP(size, PGSIZE);
+  
+  // Ako nestane memorije tj. ako se predje MMIOLIM
+  if (base + size > MMIOLIM) 
+    panic("mmio_map_region(): not enough memory to map MMIO");
+  
+  // Mapiramo region
+  boot_map_region(kern_pgdir, base, base + size, pa, PTE_PCD | PTE_PWT | PTE_W); 
+  
+  uintptr_t temp = base;
+  base += size;
+  // Vracamo pocetak mapiranog regiona
+  return (void *) temp;
 }
 
 static uintptr_t user_mem_check_addr;
