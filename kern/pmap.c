@@ -324,13 +324,20 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
   //
+  
   // prvi dio
   pages[0].pp_ref = 1;
   pages[0].pp_link = NULL;
 
   // drugi dio
-	size_t i;
+  size_t i;
 	for (i = 1; i < npages_basemem; i++) {
+    // lab 4: izbjegavamo ubacivanje stranice u page_free_list
+    // koja je mapirana za entry point AP jezgra
+    if (i == MPENTRY_PADDR/PGSIZE) {
+      pages[i].pp_ref = 1;
+      continue;
+    }
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
