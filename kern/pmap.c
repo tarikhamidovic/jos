@@ -286,7 +286,7 @@ mem_init_mp(void)
 	// LAB 4: Your code here:
   size_t i;
   for (i = 0; i < NCPU; ++i) {
-    boot_map_region(kern_pgdir, KSTACKTOP - i * (KSTKSIZE + KSTKGAP) - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+    boot_map_region(kern_pgdir, KSTACKTOP - i * (KSTKSIZE + KSTKGAP) - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W | PTE_P);
   }
 
 }
@@ -335,17 +335,22 @@ page_init(void)
 
   // drugi dio
   size_t i;
-	for (i = 1; i < npages_basemem; i++) {
-    // lab 4: izbjegavamo ubacivanje stranice u page_free_list
-    // koja je mapirana za entry point AP jezgra
-    if (i == MPENTRY_PADDR/PGSIZE) {
-      pages[i].pp_ref = 1;
-      continue;
-    }
+  // lab 4: izbjegavamo ubacivanje stranice u page_free_list
+  // koja ce se koristiti za entry point AP jezgra
+  for (i = 1; i < MPENTRY_PADDR/PGSIZE; i++) {
+
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
 	}
+
+  pages[i].pp_ref = 1;
+  
+  for (i++; i < npages_basemem; i++) {
+    pages[i].pp_ref = 0;
+    pages[i].pp_link = page_free_list;
+    page_free_list = &pages[i];
+  }
 
   // treci dio, ne mozemo ici samo do EXTPHYSMEM jer ima prostor
   // u koji smo spremili pages i kern_pgdir
@@ -660,7 +665,7 @@ mmio_map_region(physaddr_t pa, size_t size)
     panic("mmio_map_region(): not enough memory to map MMIO");
   
   // Mapiramo region
-  boot_map_region(kern_pgdir, base, base + size, pa, PTE_PCD | PTE_PWT | PTE_W); 
+  boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W); 
   
   uintptr_t temp = base;
   base += size;
