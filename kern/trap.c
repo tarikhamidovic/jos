@@ -386,6 +386,32 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
+  if (curenv->env_pgfault_upcall) {
+    uintptr_t utf_start;
+    // U slucaju da se user okruzenje vec nalazi na user exception stacku
+    // novi UTrapframe pushamo ispod trenutnog esp ovog stacka. U suprotnom
+    // pocinjemo od pocetka user exception stacka.
+    if (tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp <= UXSTACKTOP-1) {
+      utf_start = tf->tf_esp - 4 - sizeof(struct UTrapframe);
+    } else {
+      utf_start = UXSTACKTOP - sizeof(struct UTrapframe);
+    }
+    // Provjera da li user ima pravo pristupa i pisanja na toj adresi
+    user_mem_assert(curenv, (void *) utf_start, sizeof(struct UTrapframe), PTE_W);
+    struct UTrapframe *utf = (struct UTrapframe *) utf_start;
+    // Kopiramo sve iz tf u utf, prema poljima za strukturu UTrapframe
+    // iz inc/trap.h
+    utf->utf_fault_va = fault_va;
+    utf->utf_err = tf->tf_err;
+    utf->utf_regs = tf->tf_regs;
+    utf->utf_eip = tf->tf_eip;
+    utf->utf_eflags = tf->tf_eflags;
+    utf->utf_esp = tf->tf_esp;
+    // Prebacujemo se na code za tretman iznimke
+    curenv->env_tf.tf_esp = utf_start;
+    curenv->env_tf.tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
+    env_run(curenv);
+  }
 
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
