@@ -25,6 +25,15 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
+  // Provjeravamo error code
+  if (!(err & FEC_WR))
+    panic("pgfault(): write on non writeable");
+  // Provjeravamo da li su page directory ili page prisutni
+  if (!((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P))) 
+    panic("pgfault(): page directory or page table not present");
+  // Provjera da li je page copy-on-write
+  if (!(uvpt[PGNUM(addr)] & PTE_COW)) 
+    panic("pgfault(): not copy-on-write");
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -33,8 +42,18 @@ pgfault(struct UTrapframe *utf)
 	//   You should make three system calls.
 
 	// LAB 4: Your code here.
-
-	panic("pgfault not implemented");
+  // Alociramo novu stranicu mapiranu na lokaciju PFTEMP
+  if (sys_page_alloc(0, PFTEMP, PTE_W | PTE_U | PTE_P) < 0) 
+    panic("pgfault(): sys_page_alloc failed");
+  // Kopiramo sadrzaj sa stare u novu stranicu
+  memcpy(PFTEMP, ROUNDDOWN(addr, PGSIZE), PGSIZE);
+  // Prebacujemo novu stranicu na adresu stare stranice
+  if (sys_page_map(0, PFTEMP, 0, ROUNDDOWN(addr, PGSIZE), PTE_P | PTE_U | PTE_W) < 0) 
+      panic("pgfault(): sys_page_map failed");
+  if (sys_page_unmap(0, PFTEMP) < 0) 
+    panic("pgfault(): sys_page_unmap failed");	
+  
+  //panic("pgfault not implemented");
 }
 
 //
@@ -54,7 +73,22 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	void *addr = (void *) (pn*PGSIZE);
+  uint32_t perm = PTE_U | PTE_P;
+  // Provjera za permisije, ako je stranica za pisanje ili copy-on-write
+  if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) 
+    perm |= PTE_COW;
+  // Mapiramo na osnovu permisija koje smo dobili
+  r = sys_page_map(0, addr, envid, addr, perm);
+  if (r < 0) 
+    panic("duppage(): sys_page_map failed");
+  if (perm & PTE_COW) {
+    r = sys_page_map(0, addr, 0, addr, perm);
+    if (r < 0) 
+      panic("duppage(): sys_page_map failed");
+  }
+  
+  //panic("duppage not implemented");
 	return 0;
 }
 
@@ -78,7 +112,33 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+  set_pgfault_handler(pgfault);
+  envid_t child = sys_exofork();
+  // Ako se desi greska, panic
+  if (child < 0) 
+    panic("fork(): sys_exofork error");
+  // Ako je child = 0, onda smo mi child, thisenv treba da pokazuje na child
+  if (child == 0) {
+    thisenv = &envs[ENVX(sys_getenvid())];
+    return child;
+  }
+  // Ako smo uspjeli doci do ovog dijela, znaci da smo mi parent. Mapiramo
+  uint32_t addr;
+  for (addr = 0; addr < USTACKTOP; addr += PGSIZE) {
+    if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_U)) 
+      duppage(child, PGNUM(addr));
+  }
+  // Pravimo child user exception stack
+  if (sys_page_alloc(child, (void *) (UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0) 
+    panic("fork(): sys_page_alloc failed to allocate a page for UE stack");
+  // Postavljamo pgfault entry
+  if (sys_env_set_pgfault_upcall(child, thisenv->env_pgfault_upcall) < 0)
+    panic("fork(): sys_env_set_pgfault_upcall failed to set up entry for pgfault");
+  // Postavljamo child kao runnable
+  if (sys_env_set_status(child, ENV_RUNNABLE) < 0) 
+    panic("fork(): sys_env_set_status failed to set child as runnable");
+  return child;
+	//panic("fork not implemented");
 }
 
 // Challenge!
