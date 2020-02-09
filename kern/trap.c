@@ -117,6 +117,18 @@ trap_init(void)
   void SYSCALL();
   SETGATE(idt[T_SYSCALL], 0, GD_KT, SYSCALL, 3); 
 
+  void TIMER();
+  void KBD();
+  void SERIAL();
+  void SPURIOUS();
+  void IDE();
+
+  SETGATE(idt[IRQ_OFFSET+IRQ_TIMER], 0, GD_KT, TIMER, 0);
+  SETGATE(idt[IRQ_OFFSET+IRQ_KBD], 0, GD_KT, KBD, 0);
+  SETGATE(idt[IRQ_OFFSET+IRQ_SERIAL], 0, GD_KT, SERIAL, 0);
+  SETGATE(idt[IRQ_OFFSET+IRQ_SPURIOUS], 0, GD_KT, SPURIOUS, 0);
+  SETGATE(idt[IRQ_OFFSET+IRQ_IDE], 0, GD_KT, IDE, 0);
+
   // Per-CPU setup 
 	trap_init_percpu();
 }
