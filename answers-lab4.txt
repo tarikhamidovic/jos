@@ -1,0 +1,46 @@
+1. Compare kern/mpentry.S side by side with boot/boot.S. 
+Bearing in mind that kern/mpentry.S is compiled and linked to run above 
+KERNBASE just like everything else in the kernel, what is the purpose of
+macro MPBOOTPHYS? Why is it necessary in kern/mpentry.S but not in 
+boot/boot.S? In other words, what could go wrong if it were omitted in 
+kern/mpentry.S? Hint: recall the differences between the link address and 
+the load address that we have discussed in Lab 1.
+
+Uz pomoc MPBOOTPHYS mozemo proracunati fizicke adrese iz virtuelnih, jer pri
+pokretanju AP jezgri jezgro prolazi kroz slican proces kao sto je boot proces.
+
+
+2. It seems that using the big kernel lock guarantees that only one CPU can 
+run the kernel code at a time. Why do we still need separate kernel stacks
+for each CPU? Describe a scenario in which using a shared kernel stack will 
+go wrong, even with the protection of the big kernel lock.
+
+Ako se desi iznimka, dolazi do formiranja trapframe strukture na kernel 
+stacku, pa se tek onda provjerava lock.
+
+
+3. In your implementation of env_run() you should have called lcr3(). 
+Before and after the call to lcr3(), your code makes references 
+(at least it should) to the variable e, the argument to env_run. 
+Upon loading the %cr3 register, the addressing context used by the MMU 
+is instantly changed. But a virtual address (namely e) has meaning 
+relative to a given address context--the address context specifies the
+physical address to which the virtual address maps. Why can the pointer e 
+be dereferenced both before and after the addressing switch?
+
+Kernelov virtuelni prostor je zaseban, odvojen je od virtuelnog prostora
+ostalih procesa.
+
+
+4. Whenever the kernel switches from one environment to another, it must 
+ensure the old environment's registers are saved so they can be restored 
+properly later. Why? Where does this happen?
+
+Prilikom prekida proces prestaje sa radom te se procesor prebacuje na 
+izvrsavanje drugog procesa ili generisanja iznimke (u slucaju da se 
+desila iznimka). Potrebno je omoguciti povratak u taj proces te da se
+nastavi njegovo izvrsavanje u normalnom toku. Zbog toga se stanje registara
+koje taj proces koristi kopira na stack (formira se trapframe struktura)
+preko koje ce se moci kasnije povratiti stanje procesa koje je imao
+prije nego sto se prekid desio. To se sve odvija funkcijama iz fajla
+trap.c
