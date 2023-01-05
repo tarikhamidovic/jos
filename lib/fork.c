@@ -89,7 +89,7 @@ duppage(envid_t envid, unsigned pn)
   }
   
   //panic("duppage not implemented");
-	return 0;
+  return 0;
 }
 
 //
@@ -127,7 +127,7 @@ fork(void)
   for (addr = 0; addr < USTACKTOP; addr += PGSIZE) {
     if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_U)) 
       duppage(child, PGNUM(addr));
-  }
+    }
   // Pravimo child user exception stack
   if (sys_page_alloc(child, (void *) (UXSTACKTOP-PGSIZE), PTE_P | PTE_U | PTE_W) < 0) 
     panic("fork(): sys_page_alloc failed to allocate a page for UE stack");
@@ -145,6 +145,35 @@ fork(void)
 int
 sfork(void)
 {
-	panic("sfork not implemented");
-	return -E_INVAL;
+	//panic("sfork not implemented");
+	//return -E_INVAL;
+  envid_t parentid = sys_getenvid();
+//  thisenv = &envs[ENVX(parentid)];
+  
+  set_pgfault_handler(pgfault);
+  envid_t childid = sys_exofork();
+  if (childid < 0) panic("nope");
+  if (childid == 0) {
+//    thisenv = &envs[ENVX(sys_getenvid())];
+    return 0;
+  }
+  uint32_t addr;
+  for (addr = 0; addr < USTACKTOP-PGSIZE; addr+=PGSIZE) {
+    if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & (PTE_P|PTE_U))) { 
+      if (uvpt[PGNUM(addr)] & PTE_W)
+        sys_page_map(0, (void *)addr, childid, (void *)addr, PTE_P|PTE_U|PTE_W);
+      else
+        sys_page_map(0, (void *)addr, childid, (void *)addr, PTE_P|PTE_U);
+    }
+  }
+  duppage(childid, PGNUM(USTACKTOP-PGSIZE));
+  int r = sys_page_alloc(childid, (void *)(UXSTACKTOP-PGSIZE), PTE_P|PTE_U|PTE_W);
+  if (r < 0) panic("nope");
+  extern void _pgfault_upcall();
+  r = sys_env_set_pgfault_upcall(childid, _pgfault_upcall);
+  if (r < 0) panic("nope");
+  r = sys_env_set_status(childid, ENV_RUNNABLE);
+  if (r < 0) panic("nope");
+  return childid;
 }
+
